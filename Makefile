@@ -14,7 +14,7 @@ ifeq ($(OS),Windows_NT)
 	CFLAGS += -DWINDOWS
 	LIBS += -static $(shell pkg-config --libs --static sdl2 glew) -lm $(LIBS_FLAGS)
 else
-	LIBS += -lSDL2 -lSDL2main -lglew -lm $(LIBS_FLAGS)
+	LIBS += -lSDL3 -lGLEW -lEGL -lGL -lGLU -lOpenGL -lm $(LIBS_FLAGS)
 endif
 
 .PHONY: all clean
