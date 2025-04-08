@@ -15,8 +15,15 @@ int main() {
     world[15][0][15] = Block_Dirt;
 
     while (running) {
+        bool mouse_left  = false;
+        bool mouse_right = false;
+
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
+            if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
+                if (event.button.button == SDL_BUTTON_LEFT)  mouse_left  = true;
+                if (event.button.button == SDL_BUTTON_RIGHT) mouse_right = true;
+            }
             if (event.type == SDL_EVENT_QUIT) running = false;
         }
 
@@ -26,6 +33,12 @@ int main() {
         draw_grid();
         draw_voxels(world);
         draw_selection(selection);
+
+        if (mouse_left) world[selection->pos.x][selection->pos.y][selection->pos.z] = 0;
+        if (mouse_right) {
+            IVec3 pos = selection->pos + selection->normal;
+            if (pos.x >= 0 && pos.y >= 0 && pos.z >= 0 && pos.x < WORLD_SIZE && pos.y < WORLD_SIZE && pos.z < WORLD_SIZE) world[pos.x][pos.y][pos.z] = Block_Dirt;
+        }
 
         free(selection);
 
