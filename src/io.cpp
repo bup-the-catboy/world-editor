@@ -76,7 +76,7 @@ void export_project(World world) {
 
     for (int y = 0; y < 256; y++) {
         for (int x = 0; x < 384; x++) {
-            processed[y * 384 + x] = pixels[(255 - y) * 768 + x * 2];
+            processed[y * 384 + x] = pixels[(511 - y * 2) * 768 + x * 2];
         }
     }
 
