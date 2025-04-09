@@ -5,8 +5,6 @@
 
 #include <vector>
 
-#include "block.h"
-
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
@@ -76,13 +74,13 @@ struct Texture {
     }
 };
 
-//Mtx mtx_projection = Mtx::perspective(70, 3/2.f, .1f, 100.f);
-Mtx mtx_projection = Mtx::orthographic(-SCALE, SCALE, -SCALE * 2/3.f, SCALE * 2/3.f, .1f, 100.f);
-Mtx mtx_modelview  = Mtx::identity()
-    * Mtx::pitch(19.5 * Angle::rad)
-    * Mtx::yaw(135 * Angle::rad)
-    * Mtx::translate(0, -8, 0)
-;
+struct {
+    Vec3 pos = Vec3(0, 8, 0);
+    Vec3 rot = Vec3(-25, 180+45, 0);
+} camera;
+
+Mtx mtx_projection = Mtx::identity();
+Mtx mtx_modelview  = Mtx::identity();
 std::vector<Mtx> matrices = {};
 
 void push_matrix(Mtx mtx) {
@@ -98,6 +96,12 @@ void put_vertex(float x, float y, float z, float u = 0, float v = 0) {
     Vec3 vec = (mtx_projection * matrices.back() * Vec4(x, y, z, 1)).divide().vec3();
     glTexCoord2f(u, v);
     glVertex3f(vec.x, vec.y, vec.z);
+}
+
+void unproject(float x, float y, Vec3* pos, Vec3* dir) {
+    Mtx mtx = (mtx_projection * mtx_modelview).inv();
+    *pos =  (mtx * Vec4(x, y, -1, 1)).divide().vec3();
+    *dir = ((mtx * Vec4(x, y,  1, 1)).divide().vec3() - *pos).normalized();
 }
 
 void render_begin() {
@@ -130,6 +134,15 @@ void prepare_rendering() {
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LEQUAL);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    //mtx_projection = Mtx::perspective(70, 3/2.f, .1f, 100.f);
+    mtx_projection = Mtx::orthographic(-SCALE, SCALE, -SCALE * 2/3.f, SCALE * 2/3.f, .1f, 100.f);
+    mtx_modelview = Mtx::identity()
+        * Mtx::roll (-camera.rot.z * Angle::rad)
+        * Mtx::pitch(-camera.rot.x * Angle::rad)
+        * Mtx::yaw  (-camera.rot.y * Angle::rad)
+        * Mtx::translate(-camera.pos)
+    ;
 
     matrices.clear();
     matrices.push_back(mtx_modelview);
@@ -191,6 +204,29 @@ void draw_cube(Texture posy = Texture(), Texture negy = Texture(), Texture posx 
     draw_box(Vec3(0, 0, 0), Vec3(1, 1, 1), posy, negy, posx, negx, posz, negz);
 }
 
+void draw_block(BlockID block) {
+    switch (block) {
+        case Block_Air: break;
+        case Block_Dirt:          draw_cube(FACES(IVec4(32, 0, 16, 16))); break;
+        case Block_DirtWall:      draw_cube(SLICE(IVec4(32, 0, 16, 16)), SIDES(IVec4(48, 0, 16, 16))); break;
+        case Block_Ground:        draw_cube(IVec4(0, 0, 16, 16), IVec4(32, 0, 16, 16), SIDES(IVec4(16, 0, 16, 16))); break;
+        case Block_PathStraight1: draw_cube(IVec4(32, 16, 16, 16), IVec4(32, 0, 16, 16), SIDES(IVec4(16, 0, 16, 16))); break;
+        case Block_PathStraight2: draw_cube(IVec4(32, 32, 16, 16), IVec4(32, 0, 16, 16), SIDES(IVec4(16, 0, 16, 16))); break;
+        case Block_PathCurved1:   draw_cube(IVec4(0, 16, 16, 16), IVec4(32, 0, 16, 16), SIDES(IVec4(16, 0, 16, 16))); break;
+        case Block_PathCurved2:   draw_cube(IVec4(16, 16, 16, 16), IVec4(32, 0, 16, 16), SIDES(IVec4(16, 0, 16, 16))); break;
+        case Block_PathCurved3:   draw_cube(IVec4(0, 32, 16, 16), IVec4(32, 0, 16, 16), SIDES(IVec4(16, 0, 16, 16))); break;
+        case Block_PathCurved4:   draw_cube(IVec4(16, 32, 16, 16), IVec4(32, 0, 16, 16), SIDES(IVec4(16, 0, 16, 16))); break;
+        case Block_Intersection:  draw_cube(IVec4(48, 32, 16, 16), IVec4(32, 0, 16, 16), SIDES(IVec4(16, 0, 16, 16))); break;
+        case Block_Bridge1: draw_box(Vec3(0, 0.5, 0), Vec3(1, 1, 1), SLICE(Texture(IVec4(0, 48, 16, 16), deg90)), SLICE(IVec4(16, 48, 16, 8)), SLICE(IVec4(16, 56, 16, 8))); break;
+        case Block_Bridge2: draw_box(Vec3(0, 0.5, 0), Vec3(1, 1, 1), SLICE(Texture(IVec4(0, 48, 16, 16), deg0 )), SLICE(IVec4(16, 56, 16, 8)), SLICE(IVec4(16, 48, 16, 8))); break;
+        case Block_Water:
+            draw_yplane(Vec2(0, 0), Vec2(1, 1), 0, IVec4(48, 16, 16, 16));
+            draw_yplane(Vec2(0, 0), Vec2(1, 1), 0.125, IVec4(64, 0, 16, 16));
+            break;
+        default: break;
+    }
+}
+
 void draw_voxels(World world) {
     glEnable(GL_TEXTURE_2D);
     glActiveTexture(GL_TEXTURE0);
@@ -201,26 +237,7 @@ void draw_voxels(World world) {
             for (int z = 0; z < WORLD_SIZE; z++) {
                 if (world[x][y][z] == Block_Air) continue;
                 push_matrix(Mtx::translate(x, y, z));
-                switch ((BlockID)world[x][y][z]) {
-                    case Block_Air: break;
-                    case Block_Dirt:          draw_cube(FACES(IVec4(32, 0, 16, 16))); break;
-                    case Block_DirtWall:      draw_cube(SLICE(IVec4(32, 0, 16, 16)), SIDES(IVec4(48, 0, 16, 16))); break;
-                    case Block_Ground:        draw_cube(IVec4(0, 0, 16, 16), IVec4(32, 0, 16, 16), SIDES(IVec4(16, 0, 16, 16))); break;
-                    case Block_PathStraight1: draw_cube(IVec4(32, 16, 16, 16), IVec4(32, 0, 16, 16), SIDES(IVec4(16, 0, 16, 16))); break;
-                    case Block_PathStraight2: draw_cube(IVec4(32, 32, 16, 16), IVec4(32, 0, 16, 16), SIDES(IVec4(16, 0, 16, 16))); break;
-                    case Block_PathCurved1:   draw_cube(IVec4(0, 16, 16, 16), IVec4(32, 0, 16, 16), SIDES(IVec4(16, 0, 16, 16))); break;
-                    case Block_PathCurved2:   draw_cube(IVec4(16, 16, 16, 16), IVec4(32, 0, 16, 16), SIDES(IVec4(16, 0, 16, 16))); break;
-                    case Block_PathCurved3:   draw_cube(IVec4(0, 32, 16, 16), IVec4(32, 0, 16, 16), SIDES(IVec4(16, 0, 16, 16))); break;
-                    case Block_PathCurved4:   draw_cube(IVec4(16, 32, 16, 16), IVec4(32, 0, 16, 16), SIDES(IVec4(16, 0, 16, 16))); break;
-                    case Block_Intersection:  draw_cube(IVec4(48, 32, 16, 16), IVec4(32, 0, 16, 16), SIDES(IVec4(16, 0, 16, 16))); break;
-                    case Block_Bridge1: draw_box(Vec3(0, 0.5, 0), Vec3(1, 1, 1), SLICE(Texture(IVec4(0, 48, 16, 16), deg90)), SLICE(IVec4(16, 48, 16, 8)), SLICE(IVec4(16, 56, 16, 8))); break;
-                    case Block_Bridge2: draw_box(Vec3(0, 0.5, 0), Vec3(1, 1, 1), SLICE(Texture(IVec4(0, 48, 16, 16), deg0 )), SLICE(IVec4(16, 56, 16, 8)), SLICE(IVec4(16, 48, 16, 8))); break;
-                    case Block_Water:
-                        draw_yplane(Vec2(0, 0), Vec2(1, 1), 0, IVec4(48, 16, 16, 16));
-                        draw_yplane(Vec2(0, 0), Vec2(1, 1), 0.125, IVec4(64, 0, 16, 16));
-                        break;
-                    default: break;
-                }
+                draw_block(world[x][y][z]);
                 pop_matrix();
             }
         }
@@ -254,4 +271,62 @@ void draw_selection(Selection* selection) {
     render_end();
 
     pop_matrix();
+}
+
+BlockID draw_block_selection(float x, float y, float off_x, float off_y, BlockID prev) {
+    glDisable(GL_DEPTH_TEST);
+    glColor4f(0.f, 0.f, 0.f, .5f);
+    render_begin();
+    glVertex2f(-1, -1);
+    glVertex2f( 1, -1);
+    glVertex2f( 1,  1);
+    glVertex2f(-1,  1);
+    render_end();
+    glEnable(GL_DEPTH_TEST);
+
+    glClear(GL_DEPTH_BUFFER_BIT);
+    glColor4f(1.f, 1.f, 1.f, 1.f);
+    glEnable(GL_TEXTURE_2D);
+    glActiveTexture(GL_TEXTURE0);
+    render_begin();
+
+    x -= 12;
+    y += 24;
+
+    int selected = 0;
+    int num_items = Block_Count - Block_Start;
+    float angle_step = 2*M_PI / num_items;
+    float angle = 0;
+
+    float distance = sqrt(off_x * off_x + off_y * off_y);
+    float select_angle = atan2f(off_y, off_x) + angle_step / 2;
+    if (select_angle < 0)      select_angle += 2*M_PI;
+    if (select_angle > 2*M_PI) select_angle -= 2*M_PI;
+    int select_block = distance > 48.f && distance < 192.f ? (int)(select_angle / (2*M_PI) * num_items) + Block_Start : 0;
+
+    for (int i = Block_Start; i < Block_Count; i++) {
+        float scale = SCALE * 2;
+        if (select_block == i) scale = SCALE * 1.5f;
+        mtx_projection = Mtx::orthographic(-scale, scale, -scale * 2/3.f, scale * 2/3.f, .1f, 100.f);
+
+        float ox = cos(angle) * 128;
+        float oy = sin(angle) * 128;
+        float nx = (2 * (x + ox)) / 768 - 1;
+        float ny = 1 - (2 * (y + oy)) / 512;
+
+        Vec3 pos, dir;
+        unproject(nx, ny, &pos, &dir);
+        pos += dir * 2;
+
+        push_matrix(Mtx::translate(pos));
+        draw_block((BlockID)i);
+        pop_matrix();
+
+        angle += angle_step;
+    }
+
+    render_end();
+    glDisable(GL_TEXTURE_2D);
+
+    return select_block == Block_Air ? prev : (BlockID)select_block;
 }

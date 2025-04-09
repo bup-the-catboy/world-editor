@@ -7,12 +7,6 @@
 
 #include <stdbool.h>
 
-void mkray(float x, float y, Vec3* pos, Vec3* dir) {
-    Mtx mtx = (mtx_projection * mtx_modelview).inv();
-    *pos =  (mtx * Vec4(x, y, -1, 1)).divide().vec3();
-    *dir = ((mtx * Vec4(x, y,  1, 1)).divide().vec3() - *pos).normalized();
-}
-
 bool intersect_aabb(Vec3 origin, Vec3 dir, float* tmin_out, float* tmax_out) {
     float tmin = -INFINITY, tmax = INFINITY;
     for (int i = 0; i < 3; i++) {
@@ -122,16 +116,15 @@ Selection* get_selection(World world, SDL_Window* window) {
     float mouse_x, mouse_y;
     SDL_GetMouseState(&mouse_x, &mouse_y);
     SDL_GetWindowSizeInPixels(window, &width, &height);
-    //mouse_y += 64; // idfk why
 
     float x = (2 * mouse_x) / width - 1;
     float y = 1 - (2 * mouse_y) / height;
 
     Vec3 pos, dir;
     Selection* selection = (Selection*)malloc(sizeof(Selection));
-    selection->pos = IVec3(15, -1, 15);
+    selection->pos = IVec3(-1, -1, -1);
     selection->normal = IVec3::pos_y();
-    mkray(x, y, &pos, &dir);
+    unproject(x, y, &pos, &dir);
     cast(world, pos, dir, selection);
     return selection;
 }

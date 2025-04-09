@@ -1,6 +1,8 @@
 #ifndef TYPES_H
 #define TYPES_H
 
+#include "block.h"
+
 #include <math.h>
 
 #define WORLD_SIZE 32
@@ -70,17 +72,33 @@ template<typename T> struct TVec3 {
     TVec3 operator +(const TVec3& other) const {
         return TVec3(x + other.x, y + other.y, z + other.z);
     }
+    TVec3& operator +=(const TVec3& other) {
+        x += other.x; y += other.y; z += other.z;
+        return *this;
+    }
     TVec3 operator -(const TVec3& other) const {
         return TVec3(x - other.x, y - other.y, z - other.z);
     }
     TVec3 operator -() const {
         return TVec3(-x, -y, -z);
     }
+    TVec3& operator -=(const TVec3& other) {
+        x -= other.x; y -= other.y; z -= other.z;
+        return *this;
+    }
     TVec3 operator *(const T& num) const {
         return TVec3(x * num, y * num, z * num);
     }
+    TVec3& operator *=(const T& num) {
+        x *= num; y *= num; z *= num;
+        return *this;
+    }
     TVec3 operator /(const T& num) const {
         return TVec3(x / num, y / num, z / num);
+    }
+    TVec3& operator /=(const T& num) {
+        x /= num; y /= num; z /= num;
+        return *this;
     }
     TVec3 operator >>(const TVec3& other) const {
         return (*this - other).length();
@@ -310,10 +328,10 @@ struct Mtx {
         return *this * TVec4<T>(other.x, other.y, other.z, 1);
     }
     MtxRow operator[](int row) {
-        return MtxRow{ m, row };
+        return MtxRow(m, row);
     }
     const MtxRow operator[](int row) const {
-        return MtxRow{ const_cast<float*>(m), row };
+        return MtxRow(const_cast<float*>(m), row);
     }
     Mtx inv() const {
         Mtx i = Mtx();
@@ -357,6 +375,6 @@ struct Angle {
     constexpr static float deg = 180 / M_PI;
 };
 
-typedef int World[WORLD_SIZE][WORLD_SIZE][WORLD_SIZE];
+typedef BlockID World[WORLD_SIZE][WORLD_SIZE][WORLD_SIZE];
 
 #endif
