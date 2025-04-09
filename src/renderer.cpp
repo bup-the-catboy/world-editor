@@ -5,8 +5,7 @@
 
 #include <vector>
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
+#include "lib/stb_image.h"
 
 #define SCALE 6
 
@@ -82,6 +81,7 @@ struct {
 Mtx mtx_projection = Mtx::identity();
 Mtx mtx_modelview  = Mtx::identity();
 std::vector<Mtx> matrices = {};
+GLuint tileset_texture;
 
 void push_matrix(Mtx mtx) {
     matrices.push_back(matrices.back() * mtx);
@@ -117,14 +117,14 @@ void prepare_rendering() {
     if (num_frames == 0) {
         int x, y, c;
         unsigned char* image = stbi_load("../assets/images/tilesets/grass_map.png", &x, &y, &c, 4);
-        GLuint texture;
-        glGenTextures(1, &texture);
-        glBindTexture(GL_TEXTURE_2D, texture);
+        glGenTextures(1, &tileset_texture);
+        glBindTexture(GL_TEXTURE_2D, tileset_texture);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, TILEMAP_WIDTH, TILEMAP_HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, image);
+        stbi_image_free(image);
     }
 
     glClearColor(0.f, 0.f, 0.f, 1.f);

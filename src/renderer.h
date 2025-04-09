@@ -3,8 +3,11 @@
 
 #include "types.h"
 
+#include <GL/gl.h>
+
 extern Mtx mtx_projection;
 extern Mtx mtx_modelview;
+extern GLuint tileset_texture;
 
 void unproject(float x, float y, Vec3* pos, Vec3* dir);
 void prepare_rendering();

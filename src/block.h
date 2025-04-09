@@ -1,7 +1,7 @@
 #ifndef BLOCK_H
 #define BLOCK_H
 
-enum BlockID {
+enum BlockID: unsigned char {
     Block_Air,
     Block_Dirt,
     Block_DirtWall,
