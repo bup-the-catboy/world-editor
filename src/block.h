@@ -4,8 +4,8 @@
 enum BlockID {
     Block_Air,
     Block_Dirt,
-    Block_Ground,
     Block_DirtWall,
+    Block_Ground,
     Block_PathStraight1,
     Block_PathStraight2,
     Block_PathCurved1,

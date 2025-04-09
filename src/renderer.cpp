@@ -14,9 +14,66 @@
 
 static int num_frames = 0;
 
+template<typename T> void swap(T& a, T& b) {
+    T temp = a;
+    a = b;
+    b = temp;
+}
+
+enum Flip {
+    Flip_None,
+    Flip_XAxis,
+    Flip_YAxis
+};
+
+enum Rotation {
+    deg0,
+    deg90,
+    deg180,
+    deg270
+};
+
 struct Vertex {
     Vec3 xyz;
     Vec2 uv;
+};
+
+struct Texture {
+    IVec4 src;
+    Flip flip;
+    Rotation rot;
+
+    Vec2 uv[4];
+
+    Texture(IVec4 src = IVec4(), Rotation rot = deg0, Flip flip = Flip_None): src(src), flip(flip), rot(rot) {
+        Vec4 vec = Vec4(
+            (src.x        ) / (float)TILEMAP_WIDTH,
+            (src.y        ) / (float)TILEMAP_HEIGHT,
+            (src.x + src.z) / (float)TILEMAP_WIDTH,
+            (src.y + src.w) / (float)TILEMAP_HEIGHT
+        );
+        uv[0] = Vec2(vec.z, vec.w);
+        uv[1] = Vec2(vec.x, vec.w);
+        uv[2] = Vec2(vec.x, vec.y);
+        uv[3] = Vec2(vec.z, vec.y);
+
+        switch (flip) {
+            case Flip_None: break;
+            case Flip_XAxis:
+                swap(uv[2], uv[3]);
+                swap(uv[0], uv[1]);
+                break;
+            case Flip_YAxis:
+                swap(uv[1], uv[2]);
+                swap(uv[0], uv[3]);
+                break;
+        }
+        for (int i = 0; i < rot; i++) {
+            swap(uv[2], uv[3]);
+            swap(uv[1], uv[2]);
+            swap(uv[0], uv[1]);
+        }
+    }
 };
 
 //Mtx mtx_projection = Mtx::perspective(70, 3/2.f, .1f, 100.f);
@@ -96,31 +153,32 @@ void draw_grid() {
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 }
 
+#define SLICE(x) x, x
 #define SIDES(x) x, x, x, x
 #define FACES(x) x, x, x, x, x, x
 
-void draw_xplane(Vec2 from, Vec2 to, float x, IVec4 uv = IVec4()) {
-    put_vertex(x, from.x, from.y, (uv.x       ) / (float)TILEMAP_WIDTH, (uv.y + uv.w) / (float)TILEMAP_HEIGHT);
-    put_vertex(x,  to .x, from.y, (uv.x       ) / (float)TILEMAP_WIDTH, (uv.y       ) / (float)TILEMAP_HEIGHT);
-    put_vertex(x,  to .x,  to .y, (uv.x + uv.z) / (float)TILEMAP_WIDTH, (uv.y       ) / (float)TILEMAP_HEIGHT);
-    put_vertex(x, from.x,  to .y, (uv.x + uv.z) / (float)TILEMAP_WIDTH, (uv.y + uv.w) / (float)TILEMAP_HEIGHT);
+void draw_xplane(Vec2 from, Vec2 to, float x, Texture tex = Texture()) {
+    put_vertex(x, from.x, from.y, tex.uv[1].x, tex.uv[1].y);
+    put_vertex(x,  to .x, from.y, tex.uv[2].x, tex.uv[2].y);
+    put_vertex(x,  to .x,  to .y, tex.uv[3].x, tex.uv[3].y);
+    put_vertex(x, from.x,  to .y, tex.uv[0].x, tex.uv[0].y);
 }
 
-void draw_yplane(Vec2 from, Vec2 to, float y, IVec4 uv = IVec4()) {
-    put_vertex(from.x, y, from.y, (uv.x + uv.z) / (float)TILEMAP_WIDTH, (uv.y + uv.w) / (float)TILEMAP_HEIGHT);
-    put_vertex( to .x, y, from.y, (uv.x       ) / (float)TILEMAP_WIDTH, (uv.y + uv.w) / (float)TILEMAP_HEIGHT);
-    put_vertex( to .x, y,  to .y, (uv.x       ) / (float)TILEMAP_WIDTH, (uv.y       ) / (float)TILEMAP_HEIGHT);
-    put_vertex(from.x, y,  to .y, (uv.x + uv.z) / (float)TILEMAP_WIDTH, (uv.y       ) / (float)TILEMAP_HEIGHT);
+void draw_yplane(Vec2 from, Vec2 to, float y, Texture tex = Texture()) {
+    put_vertex(from.x, y, from.y, tex.uv[0].x, tex.uv[0].y);
+    put_vertex( to .x, y, from.y, tex.uv[1].x, tex.uv[1].y);
+    put_vertex( to .x, y,  to .y, tex.uv[2].x, tex.uv[2].y);
+    put_vertex(from.x, y,  to .y, tex.uv[3].x, tex.uv[3].y);
 }
 
-void draw_zplane(Vec2 from, Vec2 to, float z, IVec4 uv = IVec4()) {
-    put_vertex(from.x, from.y, z, (uv.x + uv.z) / (float)TILEMAP_WIDTH, (uv.y + uv.w) / (float)TILEMAP_HEIGHT);
-    put_vertex( to .x, from.y, z, (uv.x       ) / (float)TILEMAP_WIDTH, (uv.y + uv.w) / (float)TILEMAP_HEIGHT);
-    put_vertex( to .x,  to .y, z, (uv.x       ) / (float)TILEMAP_WIDTH, (uv.y       ) / (float)TILEMAP_HEIGHT);
-    put_vertex(from.x,  to .y, z, (uv.x + uv.z) / (float)TILEMAP_WIDTH, (uv.y       ) / (float)TILEMAP_HEIGHT);
+void draw_zplane(Vec2 from, Vec2 to, float z, Texture tex = Texture()) {
+    put_vertex(from.x, from.y, z, tex.uv[0].x, tex.uv[0].y);
+    put_vertex( to .x, from.y, z, tex.uv[1].x, tex.uv[1].y);
+    put_vertex( to .x,  to .y, z, tex.uv[2].x, tex.uv[2].y);
+    put_vertex(from.x,  to .y, z, tex.uv[3].x, tex.uv[3].y);
 }
 
-void draw_box(Vec3 from, Vec3 to, IVec4 posy = IVec4(), IVec4 negy = IVec4(), IVec4 posx = IVec4(), IVec4 negx = IVec4(), IVec4 posz = IVec4(), IVec4 negz = IVec4()) {
+void draw_box(Vec3 from, Vec3 to, Texture posy = Texture(), Texture negy = Texture(), Texture posx = Texture(), Texture negx = Texture(), Texture posz = Texture(), Texture negz = Texture()) {
     draw_xplane(Vec2(from.y, from.z), Vec2(to.y, to.z), from.x, negx);
     draw_xplane(Vec2(from.y, from.z), Vec2(to.y, to.z),  to .x, posx);
     draw_yplane(Vec2(from.x, from.z), Vec2(to.x, to.z), from.y, negy);
@@ -129,7 +187,7 @@ void draw_box(Vec3 from, Vec3 to, IVec4 posy = IVec4(), IVec4 negy = IVec4(), IV
     draw_zplane(Vec2(from.x, from.y), Vec2(to.x, to.y),  to .z, posz);
 }
 
-void draw_cube(IVec4 posy = IVec4(), IVec4 negy = IVec4(), IVec4 posx = IVec4(), IVec4 negx = IVec4(), IVec4 posz = IVec4(), IVec4 negz = IVec4()) {
+void draw_cube(Texture posy = Texture(), Texture negy = Texture(), Texture posx = Texture(), Texture negx = Texture(), Texture posz = Texture(), Texture negz = Texture()) {
     draw_box(Vec3(0, 0, 0), Vec3(1, 1, 1), posy, negy, posx, negx, posz, negz);
 }
 
@@ -145,7 +203,23 @@ void draw_voxels(World world) {
                 push_matrix(Mtx::translate(x, y, z));
                 switch ((BlockID)world[x][y][z]) {
                     case Block_Air: break;
-                    case Block_Dirt: draw_cube(FACES(IVec4(32, 0, 16, 16))); break;
+                    case Block_Dirt:          draw_cube(FACES(IVec4(32, 0, 16, 16))); break;
+                    case Block_DirtWall:      draw_cube(SLICE(IVec4(32, 0, 16, 16)), SIDES(IVec4(48, 0, 16, 16))); break;
+                    case Block_Ground:        draw_cube(IVec4(0, 0, 16, 16), IVec4(32, 0, 16, 16), SIDES(IVec4(16, 0, 16, 16))); break;
+                    case Block_PathStraight1: draw_cube(IVec4(32, 16, 16, 16), IVec4(32, 0, 16, 16), SIDES(IVec4(16, 0, 16, 16))); break;
+                    case Block_PathStraight2: draw_cube(IVec4(32, 32, 16, 16), IVec4(32, 0, 16, 16), SIDES(IVec4(16, 0, 16, 16))); break;
+                    case Block_PathCurved1:   draw_cube(IVec4(0, 16, 16, 16), IVec4(32, 0, 16, 16), SIDES(IVec4(16, 0, 16, 16))); break;
+                    case Block_PathCurved2:   draw_cube(IVec4(16, 16, 16, 16), IVec4(32, 0, 16, 16), SIDES(IVec4(16, 0, 16, 16))); break;
+                    case Block_PathCurved3:   draw_cube(IVec4(0, 32, 16, 16), IVec4(32, 0, 16, 16), SIDES(IVec4(16, 0, 16, 16))); break;
+                    case Block_PathCurved4:   draw_cube(IVec4(16, 32, 16, 16), IVec4(32, 0, 16, 16), SIDES(IVec4(16, 0, 16, 16))); break;
+                    case Block_Intersection:  draw_cube(IVec4(48, 32, 16, 16), IVec4(32, 0, 16, 16), SIDES(IVec4(16, 0, 16, 16))); break;
+                    case Block_Bridge1: draw_box(Vec3(0, 0.5, 0), Vec3(1, 1, 1), SLICE(Texture(IVec4(0, 48, 16, 16), deg90)), SLICE(IVec4(16, 48, 16, 8)), SLICE(IVec4(16, 56, 16, 8))); break;
+                    case Block_Bridge2: draw_box(Vec3(0, 0.5, 0), Vec3(1, 1, 1), SLICE(Texture(IVec4(0, 48, 16, 16), deg0 )), SLICE(IVec4(16, 56, 16, 8)), SLICE(IVec4(16, 48, 16, 8))); break;
+                    case Block_Water:
+                        draw_yplane(Vec2(0, 0), Vec2(1, 1), 0, IVec4(48, 16, 16, 16));
+                        draw_yplane(Vec2(0, 0), Vec2(1, 1), 0.125, IVec4(64, 0, 16, 16));
+                        break;
+                    default: break;
                 }
                 pop_matrix();
             }
