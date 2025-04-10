@@ -14,12 +14,6 @@
 #include "lib/stb_image_write.h"
 #include "lib/portable-file-dialogs.h"
 
-std::istream& operator>>(std::istream& stream, BlockID& value) {
-    unsigned char raw;
-    if (stream >> raw) value = (BlockID)raw;
-    return stream;
-}
-
 std::string open_file(std::string title, std::string filter_name, std::string filter) {
     std::vector<std::string> files = pfd::open_file(title, ".", { filter_name, filter }).result();
     if (files.empty()) return "";
@@ -33,29 +27,29 @@ std::string save_file(std::string title, std::string filter_name, std::string fi
 void read_project(World world) {
     std::string filename = open_file("Open Project", "BTCB World Map Project", "*.wrl");
     if (filename.empty()) return;
-    std::ifstream stream = std::ifstream(filename);
+    FILE* f = fopen(filename.c_str(), "r");
     for (int x = 0; x < WORLD_SIZE; x++) {
         for (int y = 0; y < WORLD_SIZE; y++) {
             for (int z = 0; z < WORLD_SIZE; z++) {
-                stream >> world[x][y][z];
+                fread(&world[x][y][z], 1, 1, f);
             }
         }
     }
-    stream.close();
+    fclose(f);
 }
 
 void write_project(World world) {
     std::string filename = save_file("Save Project", "BTCB World Map Project", "*.wrl");
     if (filename.empty()) return;
-    std::ofstream stream = std::ofstream(filename);
+    FILE* f = fopen(filename.c_str(), "w");
     for (int x = 0; x < WORLD_SIZE; x++) {
         for (int y = 0; y < WORLD_SIZE; y++) {
             for (int z = 0; z < WORLD_SIZE; z++) {
-                stream << world[x][y][z];
+                fwrite(&world[x][y][z], 1, 1, f);
             }
         }
     }
-    stream.close();
+    fclose(f);
 }
 
 void export_project(World world) {
