@@ -1,5 +1,6 @@
 #include <SDL3/SDL.h>
 #include <GL/gl.h>
+#include <cstdio>
 
 #include "renderer.h"
 #include "selection.h"
@@ -25,6 +26,7 @@ int main() {
     bool selection_active = false;
     bool ctrl = false;
     float sel_x, sel_y;
+    float near_plane = .1f;
 
     while (running) {
         bool mouse_left  = false;
@@ -52,6 +54,7 @@ int main() {
                     if (event.key.key == SDLK_O) read_project(world);
                     if (event.key.key == SDLK_L) read_tileset(&tileset_texture);
                     if (event.key.key == SDLK_N) memset(world, 0, sizeof(World));
+                    if (event.key.key == SDLK_R) near_plane = .1f;
                 }
             }
             if (event.type == SDL_EVENT_KEY_UP) {
@@ -62,9 +65,14 @@ int main() {
                 if (event.key.key == SDLK_LCTRL) ctrl = false;
             }
             if (event.type == SDL_EVENT_QUIT) running = false;
+            if (event.type == SDL_EVENT_MOUSE_WHEEL) {
+                near_plane += event.wheel.y * .25f;
+                if (near_plane < .1f) near_plane = .1f;
+                if (near_plane > 28.f) near_plane = 28.f;
+            }
         }
 
-        prepare_rendering();
+        prepare_rendering(near_plane);
 
         Selection* selection = get_selection(world, window);
         if (selection_active) selection->pos = IVec3(-1, -1, -1);

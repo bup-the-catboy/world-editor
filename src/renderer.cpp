@@ -113,7 +113,7 @@ void render_end() {
     glFlush();
 }
 
-void prepare_rendering() {
+void prepare_rendering(float near_plane) {
     if (num_frames == 0) {
         int x, y, c;
         unsigned char* image = stbi_load("../assets/images/tilesets/grass_map.png", &x, &y, &c, 4);
@@ -132,11 +132,14 @@ void prepare_rendering() {
 
     glEnable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_ALPHA_TEST);
+    glLineWidth(2);
     glDepthFunc(GL_LEQUAL);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glAlphaFunc(GL_GREATER, .01f);
 
     //mtx_projection = Mtx::perspective(70, 3/2.f, .1f, 100.f);
-    mtx_projection = Mtx::orthographic(-SCALE, SCALE, -SCALE * 2/3.f, SCALE * 2/3.f, .1f, 100.f);
+    mtx_projection = Mtx::orthographic(-SCALE, SCALE, -SCALE * 2/3.f, SCALE * 2/3.f, near_plane, 100.f);
     mtx_modelview = Mtx::identity()
         * Mtx::roll (-camera.rot.z * Angle::rad)
         * Mtx::pitch(-camera.rot.x * Angle::rad)
