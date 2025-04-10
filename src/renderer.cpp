@@ -92,7 +92,6 @@ void pop_matrix() {
 }
 
 void put_vertex(float x, float y, float z, float u = 0, float v = 0) {
-    Mtx m = matrices.back();
     Vec3 vec = (mtx_projection * matrices.back() * Vec4(x, y, z, 1)).divide().vec3();
     glTexCoord2f(u, v);
     glVertex3f(vec.x, vec.y, vec.z);
@@ -296,7 +295,6 @@ BlockID draw_block_selection(float x, float y, float off_x, float off_y, BlockID
     x -= 12;
     y += 24;
 
-    int selected = 0;
     int num_items = Block_Count - Block_Start;
     float angle_step = 2*M_PI / num_items;
     float angle = 0;
