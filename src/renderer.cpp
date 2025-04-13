@@ -1,4 +1,4 @@
-#include "types.h"
+#include "renderer.h"
 
 #include <GL/gl.h>
 #include <stdio.h>
@@ -115,7 +115,7 @@ void render_end() {
 void prepare_rendering(float near_plane) {
     if (num_frames == 0) {
         int x, y, c;
-        unsigned char* image = stbi_load("../assets/images/tilesets/grass_map.png", &x, &y, &c, 4);
+        unsigned char* image = stbi_load("../assets/images/tilesets/grass_map_tileset.png", &x, &y, &c, 4);
         glGenTextures(1, &tileset_texture);
         glBindTexture(GL_TEXTURE_2D, tileset_texture);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -206,7 +206,8 @@ void draw_cube(Texture posy = Texture(), Texture negy = Texture(), Texture posx 
     draw_box(Vec3(0, 0, 0), Vec3(1, 1, 1), posy, negy, posx, negx, posz, negz);
 }
 
-void draw_block(BlockID block) {
+void draw_block(int block, int anim_frame = -1) {
+    if (anim_frame == -1) anim_frame = (num_frames / 25) % 4;
     switch (block) {
         case Block_Air: break;
         case Block_Dirt:          draw_cube(FACES(IVec4(32, 0, 16, 16))); break;
@@ -219,27 +220,29 @@ void draw_block(BlockID block) {
         case Block_PathCurved3:   draw_cube(IVec4(0, 32, 16, 16), IVec4(32, 0, 16, 16), SIDES(IVec4(16, 0, 16, 16))); break;
         case Block_PathCurved4:   draw_cube(IVec4(16, 32, 16, 16), IVec4(32, 0, 16, 16), SIDES(IVec4(16, 0, 16, 16))); break;
         case Block_Intersection:  draw_cube(IVec4(48, 32, 16, 16), IVec4(32, 0, 16, 16), SIDES(IVec4(16, 0, 16, 16))); break;
+        case Block_Level:         draw_cube(IVec4(48, 48, 16, 16), IVec4(32, 0, 16, 16), SIDES(IVec4(16, 0, 16, 16))); break;
         case Block_Bridge1: draw_box(Vec3(0, 0.5, 0), Vec3(1, 1, 1), SLICE(Texture(IVec4(0, 48, 16, 16), deg90)), SLICE(IVec4(16, 48, 16, 8)), SLICE(IVec4(16, 56, 16, 8))); break;
         case Block_Bridge2: draw_box(Vec3(0, 0.5, 0), Vec3(1, 1, 1), SLICE(Texture(IVec4(0, 48, 16, 16), deg0 )), SLICE(IVec4(16, 56, 16, 8)), SLICE(IVec4(16, 48, 16, 8))); break;
         case Block_Water:
             draw_yplane(Vec2(0, 0), Vec2(1, 1), 0, IVec4(48, 16, 16, 16));
-            draw_yplane(Vec2(0, 0), Vec2(1, 1), 0.125, IVec4(64, 0, 16, 16));
+            draw_yplane(Vec2(0, 0), Vec2(1, 1), 0.125, IVec4(64, anim_frame * 16, 16, 16));
             break;
         default: break;
     }
 }
 
-void draw_voxels(World world) {
+void draw_voxels(World world, WorldContext context, int anim_frame) {
     glEnable(GL_TEXTURE_2D);
     glActiveTexture(GL_TEXTURE0);
-    glColor4f(1.f, 1.f, 1.f, 1.f);
     render_begin();
     for (int x = 0; x < WORLD_SIZE; x++) {
         for (int y = 0; y < WORLD_SIZE; y++) {
             for (int z = 0; z < WORLD_SIZE; z++) {
+                bool foreground = world[x][y][z] & 0xF0;
                 if (world[x][y][z] == Block_Air) continue;
+                if ((context == BackgroundOnly && foreground) || (context == ForegroundOnly && !foreground)) continue;
                 push_matrix(Mtx::translate(x, y, z));
-                draw_block(world[x][y][z]);
+                draw_block(world[x][y][z] & 0x7F, anim_frame);
                 pop_matrix();
             }
         }
@@ -300,7 +303,7 @@ BlockID draw_block_selection(float x, float y, float off_x, float off_y, BlockID
     float angle = 0;
 
     float distance = sqrt(off_x * off_x + off_y * off_y);
-    float select_angle = atan2f(off_y, off_x) + angle_step / 2;
+    float select_angle = atan2f(off_x, -off_y) + angle_step / 2;
     if (select_angle < 0)      select_angle += 2*M_PI;
     if (select_angle > 2*M_PI) select_angle -= 2*M_PI;
     int select_block = distance > 48.f && distance < 192.f ? (int)(select_angle / (2*M_PI) * num_items) + Block_Start : 0;
@@ -310,8 +313,8 @@ BlockID draw_block_selection(float x, float y, float off_x, float off_y, BlockID
         if (select_block == i) scale = SCALE * 1.5f;
         mtx_projection = Mtx::orthographic(-scale, scale, -scale * 2/3.f, scale * 2/3.f, .1f, 100.f);
 
-        float ox = cos(angle) * 128;
-        float oy = sin(angle) * 128;
+        float ox =  sin(angle) * 128;
+        float oy = -cos(angle) * 128;
         float nx = (2 * (x + ox)) / 768 - 1;
         float ny = 1 - (2 * (y + oy)) / 512;
 
@@ -320,7 +323,7 @@ BlockID draw_block_selection(float x, float y, float off_x, float off_y, BlockID
         pos += dir * 2;
 
         push_matrix(Mtx::translate(pos));
-        draw_block((BlockID)i);
+        draw_block(i);
         pop_matrix();
 
         angle += angle_step;

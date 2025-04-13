@@ -375,6 +375,6 @@ struct Angle {
     constexpr static float deg = 180 / M_PI;
 };
 
-typedef BlockID World[WORLD_SIZE][WORLD_SIZE][WORLD_SIZE];
+typedef unsigned char World[WORLD_SIZE][WORLD_SIZE][WORLD_SIZE];
 
 #endif

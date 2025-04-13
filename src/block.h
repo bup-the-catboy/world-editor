@@ -13,6 +13,7 @@ enum BlockID: unsigned char {
     Block_PathCurved3,
     Block_PathCurved4,
     Block_Intersection,
+    Block_Level,
     Block_Bridge1,
     Block_Bridge2,
     Block_Water,

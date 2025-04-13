@@ -25,6 +25,7 @@ int main() {
 
     bool selection_active = false;
     bool ctrl = false;
+    bool alt  = false;
     float sel_x, sel_y;
     float near_plane = .1f;
 
@@ -47,6 +48,7 @@ int main() {
                     sel_y = mouse_y;
                     selection_active = true;
                 }
+                if (event.key.key == SDLK_LALT)  alt  = true;
                 if (event.key.key == SDLK_LCTRL) ctrl = true;
                 if (ctrl) {
                     if (event.key.key == SDLK_S) write_project(world);
@@ -62,6 +64,7 @@ int main() {
                     curr_block = selected_block;
                     selection_active = false;
                 }
+                if (event.key.key == SDLK_LALT)  alt  = false;
                 if (event.key.key == SDLK_LCTRL) ctrl = false;
             }
             if (event.type == SDL_EVENT_QUIT) running = false;
@@ -78,14 +81,22 @@ int main() {
         if (selection_active) selection->pos = IVec3(-1, -1, -1);
 
         draw_grid();
-        draw_voxels(world);
+        alt ? glColor4f(.5f, .5f, .5f, 1.f) : glColor4f(1.f, 1.f, 1.f, 1.f);
+        draw_voxels(world, BackgroundOnly);
+        glColor4f(1.f, 1.f, 1.f, 1.f);
+        draw_voxels(world, ForegroundOnly);
         draw_selection(selection);
         if (selection_active) selected_block = draw_block_selection(sel_x, sel_y, mouse_x - sel_x, mouse_y - sel_y, curr_block);
 
-        if (mouse_left) world[selection->pos.x][selection->pos.y][selection->pos.z] = Block_Air;
-        if (mouse_right) {
-            IVec3 pos = selection->pos + selection->normal;
-            if (pos.x >= 0 && pos.y >= 0 && pos.z >= 0 && pos.x < WORLD_SIZE && pos.y < WORLD_SIZE && pos.z < WORLD_SIZE) world[pos.x][pos.y][pos.z] = curr_block;
+        if (alt) {
+            if (mouse_left) world[selection->pos.x][selection->pos.y][selection->pos.z] ^= 0x80;
+        }
+        else {
+            if (mouse_left) world[selection->pos.x][selection->pos.y][selection->pos.z] = Block_Air;
+            if (mouse_right) {
+                IVec3 pos = selection->pos + selection->normal;
+                if (pos.x >= 0 && pos.y >= 0 && pos.z >= 0 && pos.x < WORLD_SIZE && pos.y < WORLD_SIZE && pos.z < WORLD_SIZE) world[pos.x][pos.y][pos.z] = curr_block;
+            }
         }
 
         free(selection);
